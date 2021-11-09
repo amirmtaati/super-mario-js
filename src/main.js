@@ -1,51 +1,27 @@
-import Compositor from "./Compositor.js";
 import Timer from "./Timer.js";
 import { LevelLoader } from "./loader.js";
 import { createMario } from "./entities.js";
-import { loadBackgroundSprites } from "./sprites/sprites.js";
-import { createSpriteLayer , createBackgroundLayer } from "./layers.js";
-
-import Keyboard from "./keyboard/KeyboardState.js";
+import { createCollisionLayer } from "./layers.js";
+import { setupKeyboard } from "./keyboard/input.js";
 
 const canvas = document.getElementById("screen");
 const context = canvas.getContext("2d");
 
+Promise.all([createMario(), LevelLoader("1-1")]).then(([mario, level]) => {
+  mario.pos.set(64, 64);
 
-Promise.all([
-  createMario(),
-  loadBackgroundSprites(),
-  LevelLoader('1-1'),
-])
-.then(([mario , bgSprites , level]) => {
-  const comp = new Compositor();
+  createCollisionLayer(level);
 
-  const bgLayer = createBackgroundLayer(level.backgrounds , bgSprites);
-  comp.layers.push(bgLayer);
+  level.entities.add(mario);
 
-  const gravity = 2000;
-  mario.pos.set(64 , 175);
-  
-
-  const SPACE = 32;
-  const input = new Keyboard();
-  input.addMapping(SPACE , keyState => {
-    if(keyState) {
-      mario.jump.start();
-    } else {
-      mario.jump.cancel();
-    }
-  });
+  const input = setupKeyboard(mario);
   input.listenTo(window);
-
-  const spriteLayer = createSpriteLayer(mario);
-  comp.layers.push(spriteLayer);
 
   const timer = new Timer(1 / 60);
   timer.update = function update(deltaTime) {
-    mario.update(deltaTime);
-    comp.draw(context);
-    //mario.vel.y += gravity * deltaTime;
-  }
+    level.update(deltaTime);
+    level.comp.draw(context);
+  };
 
   timer.start();
-})
+});
